@@ -242,11 +242,11 @@ export default function RevealPage() {
   };
 
   return (
-    <main className="flex flex-col items-center min-h-screen p-4 pt-8 md:pt-24">
+    <main className="flex flex-col items-center min-h-screen p-4 pt-8 md:pt-24 bg-white">
       <div className="text-center space-y-2 w-full md:max-w-3xl">
-        <h1 className="font-videocond font-light text-4xl md:text-5xl mb-2">WELCOME TO THE REVOLUTION</h1>
-        <div className="font-videocond font-bold text-3xl md:text-4xl mb-4">{displayName}</div>
-        <p className="font-videocond font-light text-xl mb-2">
+        <h1 className="font-videocond font-light text-4xl md:text-5xl mb-2 text-black">WELCOME TO THE REVOLUTION</h1>
+        <div className="font-videocond font-bold text-3xl md:text-4xl mb-4 text-black">{displayName}</div>
+        <p className="font-videocond font-light text-xl mb-2 text-black">
           This generative artwork is yours, and yours alone.<br />
           Download it, share it, and know you're part of something bigger.
         </p>
@@ -266,13 +266,13 @@ export default function RevealPage() {
         </div>
         <div className="flex flex-row gap-4 justify-center my-4">
           <button
-            className="border-2 border-black rounded-full px-4 py-2 font-videocond text-xl font-bold bg-transparent hover:bg-black hover:text-white transition cursor-pointer"
+            className="border-2 border-black rounded-full px-4 py-2 font-videocond text-xl font-bold bg-white text-black hover:bg-black hover:text-white transition cursor-pointer"
             onClick={handleDownloadForPrint}
           >
             DOWNLOAD FOR PRINT
           </button>
           <button
-            className="border-2 border-black rounded-full px-4 py-2 font-videocond text-xl font-bold bg-transparent hover:bg-black hover:text-white transition cursor-pointer"
+            className="border-2 border-black rounded-full px-4 py-2 font-videocond text-xl font-bold bg-white text-black hover:bg-black hover:text-white transition cursor-pointer"
             onClick={() => setZineModalOpen(true)}
           >
             GET ZINE BY MAIL
@@ -283,7 +283,7 @@ export default function RevealPage() {
       {artworkLoading && (
         <div className="mt-8 text-center">
           <img src="/images/loading-black2.gif" alt="Loading" className="w-48 h-48 mx-auto mb-4" />
-          <div className="font-videocond text-2xl">Generating artwork...</div>
+          <div className="font-videocond text-2xl text-black">Generating artwork...</div>
         </div>
       )}
             <div className="mt-8 flex justify-center">
