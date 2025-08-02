@@ -165,48 +165,65 @@ export default function RevealPage() {
 
   const handleDownloadForPrint = async () => {
     try {
-      // Create a separate canvas for download
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        alert('Failed to create download canvas.');
+      // Get the displayed canvas
+      const canvas = document.querySelector('canvas');
+      if (!canvas) {
+        alert('Artwork not ready yet. Please wait for it to generate.');
         return;
       }
       
-      // Set canvas size
-      canvas.width = 1700;
-      canvas.height = 2200;
+      // Temporarily change background to white
+      setBackground('white');
       
-      // Draw the artwork with white background
-      await drawGenerativeArtToCanvas({
-        ctx,
-        name: displayName,
-        date,
-        signature,
-        signerNumber,
-        width: 1700,
-        height: 2200,
-        whiteBackground: true,
-      });
-      
-      // Convert to blob and download
-      canvas.toBlob((blob) => {
-        if (!blob) {
-          alert('Failed to generate download image.');
+      // Wait for the component to re-render with white background
+      setTimeout(() => {
+        const updatedCanvas = document.querySelector('canvas');
+        if (!updatedCanvas) {
+          alert('Failed to update canvas for download.');
+          setBackground('paper');
           return;
         }
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "manifesto-artwork.png";
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      }, "image/png");
+        
+        // Create a new canvas for the download
+        const downloadCanvas = document.createElement('canvas');
+        const downloadCtx = downloadCanvas.getContext('2d');
+        if (!downloadCtx) {
+          alert('Failed to create download canvas.');
+          setBackground('paper');
+          return;
+        }
+        
+        // Set the same dimensions
+        downloadCanvas.width = updatedCanvas.width;
+        downloadCanvas.height = updatedCanvas.height;
+        
+        // Copy the artwork with white background
+        downloadCtx.drawImage(updatedCanvas, 0, 0);
+        
+        // Convert to blob and download
+        downloadCanvas.toBlob((blob) => {
+          if (!blob) {
+            alert('Failed to generate download image.');
+            setBackground('paper');
+            return;
+          }
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "manifesto-artwork.png";
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          
+          // Restore paper background
+          setBackground('paper');
+        }, "image/png");
+      }, 100); // Wait 100ms for re-render
     } catch (error) {
       console.error('Error downloading artwork:', error);
       alert('Failed to download artwork. Please try again.');
+      setBackground('paper');
     }
   };
 
@@ -315,7 +332,7 @@ export default function RevealPage() {
             <div className="mt-8 mb-6 md:mb-12 flex justify-center">
         <div className="w-full max-w-md md:max-w-2xl mx-auto shadow-lg rounded-lg overflow-hidden">
           <GenerativeArt
-            key={`${signerNumber}-${signature}`}
+            key={`${signerNumber}-${signature}-${background}`}
             name={displayName}
             date={date}
             signature={signature}
