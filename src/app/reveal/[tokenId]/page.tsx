@@ -165,31 +165,37 @@ export default function RevealPage() {
 
   const handleDownloadForPrint = async () => {
     setBackground('white');
-    // Wait for the canvas to update
-    setTimeout(() => {
+    setArtworkLoading(true); // Reset loading state for re-render
+    
+    // Wait for the artwork to be ready after background change
+    const checkArtworkReady = () => {
       const canvas = document.querySelector('canvas');
-      if (!canvas) {
-        alert('Artwork not ready yet. Please wait for it to generate.');
-        setBackground('paper');
-        return;
-      }
-      canvas.toBlob((blob) => {
-        if (!blob) {
-          alert('Failed to generate download image.');
+      if (canvas && !artworkLoading) {
+        // Artwork is ready, capture and download
+        canvas.toBlob((blob) => {
+          if (!blob) {
+            alert('Failed to generate download image.');
+            setBackground('paper');
+            return;
+          }
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "manifesto-artwork.png";
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
           setBackground('paper');
-          return;
-        }
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "manifesto-artwork.png";
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        setBackground('paper');
-      }, "image/png");
-    }, 300); // Wait 300ms for re-render
+        }, "image/png");
+      } else {
+        // Check again in 100ms
+        setTimeout(checkArtworkReady, 100);
+      }
+    };
+    
+    // Start checking after a short delay
+    setTimeout(checkArtworkReady, 100);
   };
 
   const handleShareToX = async () => {
