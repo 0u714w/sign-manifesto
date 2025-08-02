@@ -15,14 +15,14 @@ export function PrivyProvider({ children }: { children: ReactNode }) {
           accentColor: '#000000',
         },
         defaultChain: {
-          id: 84532, // Base Sepolia testnet
-          name: 'Base Sepolia',
+          id: 8453, // Base Mainnet
+          name: 'Base',
           rpcUrls: {
-            default: { http: ['https://sepolia.base.org'] },
-            public: { http: ['https://sepolia.base.org'] },
+            default: { http: ['https://mainnet.base.org'] },
+            public: { http: ['https://mainnet.base.org'] },
           },
           blockExplorers: {
-            default: { name: 'BaseScan', url: 'https://sepolia.basescan.org' },
+            default: { name: 'BaseScan', url: 'https://basescan.org' },
           },
           nativeCurrency: {
             name: 'ETH',
@@ -32,14 +32,14 @@ export function PrivyProvider({ children }: { children: ReactNode }) {
         },
         supportedChains: [
           {
-            id: 84532, // Base Sepolia testnet
-            name: 'Base Sepolia',
+            id: 8453, // Base Mainnet
+            name: 'Base',
             rpcUrls: {
-              default: { http: ['https://sepolia.base.org'] },
-              public: { http: ['https://sepolia.base.org'] },
+              default: { http: ['https://mainnet.base.org'] },
+              public: { http: ['https://mainnet.base.org'] },
             },
             blockExplorers: {
-              default: { name: 'BaseScan', url: 'https://sepolia.basescan.org' },
+              default: { name: 'BaseScan', url: 'https://basescan.org' },
             },
             nativeCurrency: {
               name: 'ETH',

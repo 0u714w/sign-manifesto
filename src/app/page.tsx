@@ -62,7 +62,7 @@ export default function Home() {
   const handleCollect = async (name: string) => {
     setMinting(true);
     try {
-      const contractAddress = "0x81B5D9ef5A8cf3Fb888CFF5fFDcCE5fD89b8510E";
+      const contractAddress = "0x01bD58aC51B1F8fC8d086C6564d2Dd9f4cA9A2Fe";
       const provider = new ethers.BrowserProvider(window.ethereum as any);
       const signer = await provider.getSigner();
       const contract = new ethers.Contract(contractAddress, ManifestoMinterABI, signer);
