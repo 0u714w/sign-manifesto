@@ -439,6 +439,16 @@ export async function drawGenerativeArtToCanvas({
   const MARGIN_TOP = (height - ART_H - MARGIN_BOTTOM);
   const MARGIN_LEFT = (width - ART_W) / 2;
 
+  // Use the same seed calculation as p5.js version
+  const hashToSeed = (sig: string) => {
+    let hash = 0;
+    for (let i = 0; i < sig.length; i++) {
+      hash = (hash << 5) - hash + sig.charCodeAt(i);
+      hash |= 0;
+    }
+    return Math.abs(hash);
+  };
+
   // Draw icons (random, but deterministic by signature)
   function seededRandom(seed: number) {
     let x = Math.sin(seed++) * 10000;
@@ -447,10 +457,10 @@ export async function drawGenerativeArtToCanvas({
       return x - Math.floor(x);
     };
   }
-  const seed = Array.from(signature).reduce((acc, c) => acc + c.charCodeAt(0), 0) + signerNumber;
+  const seed = hashToSeed(signature);
   const rand = seededRandom(seed);
 
-  // Place icons
+  // Place icons (simplified version of p5.js algorithm)
   const numIcons = Math.floor(rand() * 5) + 7;
   for (let i = 0; i < numIcons; i++) {
     const iconIdx = Math.floor(rand() * iconImgs.length);
@@ -467,8 +477,9 @@ export async function drawGenerativeArtToCanvas({
     ctx.restore();
   }
 
-  // Dot field (simple version)
-  for (let i = 0; i < 1000; i++) {
+  // Dot field (simplified version - should match p5.js algorithm)
+  const baseDensity = Math.min(Math.max(signerNumber, 1), 1000) * 0.04 + 80; // map(signerNumber, 1, 1000, 80, 120)
+  for (let i = 0; i < baseDensity * 10; i++) {
     const x = MARGIN_LEFT + rand() * ART_W;
     const y = MARGIN_TOP + rand() * ART_H;
     const r = 2 + rand() * 22;
