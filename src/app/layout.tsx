@@ -6,6 +6,9 @@ import Script from 'next/script';
 export const metadata: Metadata = {
   title: "Sign the Manifesto",
   description: "Sign the manifesto and collect your unique piece of generative art",
+  icons: {
+    icon: '/images/Checks-Black.png',
+  },
 };
 
 export default function RootLayout({
