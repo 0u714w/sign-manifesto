@@ -165,21 +165,25 @@ export default function RevealPage() {
 
   const handleDownloadForPrint = async () => {
     try {
-      // Create a separate canvas for download
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
+      // Create a hidden canvas with white background
+      const hiddenCanvas = document.createElement('canvas');
+      const hiddenCtx = hiddenCanvas.getContext('2d');
+      if (!hiddenCtx) {
         alert('Failed to create download canvas.');
         return;
       }
       
       // Set canvas size
-      canvas.width = 1700;
-      canvas.height = 2200;
+      hiddenCanvas.width = 1700;
+      hiddenCanvas.height = 2200;
       
-      // Draw the artwork with white background
+      // Fill with white background
+      hiddenCtx.fillStyle = '#ffffff';
+      hiddenCtx.fillRect(0, 0, hiddenCanvas.width, hiddenCanvas.height);
+      
+      // Draw the artwork with white background using the same function
       await drawGenerativeArtToCanvas({
-        ctx,
+        ctx: hiddenCtx,
         name: displayName,
         date,
         signature,
@@ -190,7 +194,7 @@ export default function RevealPage() {
       });
       
       // Convert to blob and download
-      canvas.toBlob((blob) => {
+      hiddenCanvas.toBlob((blob) => {
         if (!blob) {
           alert('Failed to generate download image.');
           return;

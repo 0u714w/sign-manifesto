@@ -449,6 +449,13 @@ export async function drawGenerativeArtToCanvas({
     return Math.abs(hash);
   };
 
+  // Simple noise function (approximation of p5.js noise)
+  function noise(x: number, y: number, z: number): number {
+    // Simple hash-based noise
+    const hash = (x * 12.9898 + y * 78.233 + z * 37.719) % 1;
+    return Math.sin(hash * Math.PI) * 0.5 + 0.5;
+  }
+
   // Draw icons (random, but deterministic by signature)
   function seededRandom(seed: number) {
     let x = Math.sin(seed++) * 10000;
@@ -477,16 +484,117 @@ export async function drawGenerativeArtToCanvas({
     ctx.restore();
   }
 
-  // Dot field (simplified version - should match p5.js algorithm)
+  // Dot field using noise-based positioning (matching p5.js algorithm)
   const baseDensity = Math.min(Math.max(signerNumber, 1), 1000) * 0.04 + 80; // map(signerNumber, 1, 1000, 80, 120)
-  for (let i = 0; i < baseDensity * 10; i++) {
-    const x = MARGIN_LEFT + rand() * ART_W;
-    const y = MARGIN_TOP + rand() * ART_H;
-    const r = 2 + rand() * 22;
-    ctx.fillStyle = "rgba(255,232,0,0.7)";
-    ctx.beginPath();
-    ctx.arc(x, y, r, 0, 2 * Math.PI);
-    ctx.fill();
+  const cols = baseDensity;
+  const rows = Math.floor(cols * ART_H / ART_W);
+  const cellW = ART_W / cols;
+  const cellH = ART_H / rows;
+
+  // Layer 1: Yellow halftone field (high density, big dots)
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      const x = MARGIN_LEFT + i * cellW + cellW/2;
+      const y = MARGIN_TOP + j * cellH + cellH/2;
+      const n = noise(i*0.09, j*0.09, seed*0.01);
+      const contrast = 2.2;
+      const adjustedNoise = Math.pow(n, contrast);
+      const s = 2 + adjustedNoise * 22; // map(n, 0, 1, 2, 24)
+      ctx.fillStyle = "rgba(255,232,0,0.7)";
+      ctx.beginPath();
+      ctx.arc(x, y, s, 0, 2 * Math.PI);
+      ctx.fill();
+    }
+  }
+
+  // Layer 2: Black halftone field (if signerCount > 25)
+  if (signerNumber > 25) {
+    for (let i = 0; i < cols; i++) {
+      for (let j = 0; j < rows; j++) {
+        const x = MARGIN_LEFT + i * cellW + cellW/2;
+        const y = MARGIN_TOP + j * cellH + cellH/2;
+        const n = noise(i*0.09 + 1000, j*0.09 + 1000, seed*0.01 + 1000);
+        const contrast = 2.0;
+        const adjustedNoise = Math.pow(n, contrast);
+        const s = adjustedNoise * 18; // map(n, 0, 1, 0, 18)
+        ctx.fillStyle = "rgba(136,137,138,0.47)"; // color(136, 137, 138, 120)
+        ctx.beginPath();
+        ctx.arc(x, y, s, 0, 2 * Math.PI);
+        ctx.fill();
+      }
+    }
+  }
+
+  // Layer 3: Electric aqua (if signerCount > 50)
+  if (signerNumber > 50) {
+    for (let i = 0; i < cols; i++) {
+      for (let j = 0; j < rows; j++) {
+        const x = MARGIN_LEFT + i * cellW + cellW/2;
+        const y = MARGIN_TOP + j * cellH + cellH/2;
+        const n = noise(i*0.09 + 2000, j*0.09 + 2000, seed*0.01 + 2000);
+        const contrast = 2.0;
+        const adjustedNoise = Math.pow(n, contrast);
+        const s = 1 + adjustedNoise * 15; // map(n, 0, 1, 1, 16)
+        ctx.fillStyle = "rgba(94,200,229,0.7)"; // color(94, 200, 229, 180)
+        ctx.beginPath();
+        ctx.arc(x, y, s, 0, 2 * Math.PI);
+        ctx.fill();
+      }
+    }
+  }
+
+  // Layer 4: Hot pink (if signerCount > 100)
+  if (signerNumber > 100) {
+    for (let i = 0; i < cols; i++) {
+      for (let j = 0; j < rows; j++) {
+        const x = MARGIN_LEFT + i * cellW + cellW/2;
+        const y = MARGIN_TOP + j * cellH + cellH/2;
+        const n = noise(i*0.09 + 3000, j*0.09 + 3000, seed*0.01 + 3000);
+        const contrast = 2.0;
+        const adjustedNoise = Math.pow(n, contrast);
+        const s = 1 + adjustedNoise * 15; // map(n, 0, 1, 1, 16)
+        ctx.fillStyle = "rgba(255,75,128,0.7)"; // color(255, 75, 128, 180)
+        ctx.beginPath();
+        ctx.arc(x, y, s, 0, 2 * Math.PI);
+        ctx.fill();
+      }
+    }
+  }
+
+  // Layer 5: Acid green (if signerCount > 250)
+  if (signerNumber > 250) {
+    for (let i = 0; i < cols; i++) {
+      for (let j = 0; j < rows; j++) {
+        const x = MARGIN_LEFT + i * cellW + cellW/2;
+        const y = MARGIN_TOP + j * cellH + cellH/2;
+        const n = noise(i*0.09 + 4000, j*0.09 + 4000, seed*0.01 + 4000);
+        const contrast = 2.0;
+        const adjustedNoise = Math.pow(n, contrast);
+        const s = 1 + adjustedNoise * 15; // map(n, 0, 1, 1, 16)
+        ctx.fillStyle = "rgba(68,214,44,0.7)"; // color(68, 214, 44, 180)
+        ctx.beginPath();
+        ctx.arc(x, y, s, 0, 2 * Math.PI);
+        ctx.fill();
+      }
+    }
+  }
+
+  // Layer 6: Coral pink (if signerCount > 500)
+  if (signerNumber > 500) {
+    for (let i = 0; i < cols; i++) {
+      for (let j = 0; j < rows; j++) {
+        const x = MARGIN_LEFT + i * cellW + cellW/2;
+        const y = MARGIN_TOP + j * cellH + cellH/2;
+        const n = noise(i*0.09 + 5000, j*0.09 + 5000, seed*0.01 + 5000);
+        const contrast = 2.0;
+        const adjustedNoise = Math.pow(n, contrast);
+        const s = 1 + adjustedNoise * 15; // map(n, 0, 1, 1, 16)
+        ctx.fillStyle = "rgba(255,116,119,0.7)"; // color(255, 116, 119, 180)
+        ctx.beginPath();
+        ctx.arc(x, y, s, 0, 2 * Math.PI);
+        ctx.fill();
+      }
+    }
   }
 
   // Manifesto text image
