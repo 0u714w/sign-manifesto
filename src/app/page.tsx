@@ -1,103 +1,153 @@
-import Image from "next/image";
+"use client";
+import React, { useEffect, useState } from "react";
+import { usePrivy } from "@privy-io/react-auth";
+import SignManifestoModal from "@/components/SignManifestoModal";
+import { ethers } from "ethers";
+import ManifestoMinterABI from "@/lib/ManifestoMinterABI.json";
+import { useRouter } from "next/navigation";
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const { login, authenticated, user, linkWallet, logout } = usePrivy();
+  const [modalOpen, setModalOpen] = useState(false);
+  const [ensName, setEnsName] = useState<string>("");
+  const [signerNumber, setSignerNumber] = useState<number | undefined>(undefined);
+  const [minting, setMinting] = useState(false);
+  const router = useRouter();
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+  // ENS lookup after login
+  useEffect(() => {
+    async function fetchENS() {
+      if (authenticated && user?.wallet?.address) {
+        try {
+          const provider = new ethers.AlchemyProvider("mainnet", process.env.NEXT_PUBLIC_ALCHEMY_KEY);
+          console.log("Looking up ENS for address:", user.wallet.address);
+          let name = await provider.lookupAddress(user.wallet.address);
+          console.log("Mainnet ENS result:", name);
+          if (!name) {
+            try {
+              const baseProvider = new ethers.AlchemyProvider("base-mainnet", process.env.NEXT_PUBLIC_ALCHEMY_KEY);
+              name = await baseProvider.lookupAddress(user.wallet.address);
+              console.log("Base ENS result:", name);
+            } catch (e) {
+              console.error("Base ENS lookup error:", e);
+            }
+          }
+          setEnsName(name || "");
+        } catch (e) {
+          console.error("ENS lookup error:", e);
+          setEnsName("");
+        }
+      }
+    }
+    fetchENS();
+  }, [authenticated, user]);
+
+  // Open modal automatically after login
+  useEffect(() => {
+    if (authenticated) {
+      setModalOpen(true);
+    }
+  }, [authenticated]);
+
+  const handleSign = (name: string) => {
+    // TODO: Replace with real backend/contract call to get signer number
+    setSignerNumber(42); // Simulated signer number
+    // Do NOT close the modal or show alert here!
+  };
+
+  const handleConnectWallet = () => {
+    linkWallet?.();
+  };
+
+  const handleCollect = async (name: string) => {
+    setMinting(true);
+    try {
+      const contractAddress = "0x81B5D9ef5A8cf3Fb888CFF5fFDcCE5fD89b8510E";
+      const provider = new ethers.BrowserProvider(window.ethereum as any);
+      const signer = await provider.getSigner();
+      const contract = new ethers.Contract(contractAddress, ManifestoMinterABI, signer);
+
+      // Call mint (pass empty string for signatureHash if not used)
+      const tx = await contract.mint(name, "");
+      const receipt = await tx.wait();
+
+      // Find ManifestoSigned event
+      const event = receipt.logs
+        .map((log: any) => {
+          try {
+            return contract.interface.parseLog(log);
+          } catch {
+            return null;
+          }
+        })
+        .find((e: any) => e && e.name === "ManifestoSigned");
+
+      if (!event) {
+        alert("Mint succeeded but event not found. Please check the explorer.");
+        return;
+      }
+
+      const tokenId = event.args.tokenId.toString();
+      const transactionHash = receipt.hash;
+
+      // Pass data to reveal page (via router, state, or context)
+      // Make sure user.wallet.address is available
+      const walletAddress = user?.wallet?.address || "";
+      router.push(
+        `/reveal/${tokenId}?name=${encodeURIComponent(name)}&tx=${transactionHash}&wallet=${walletAddress}`
+      );
+    } catch (err) {
+      alert("Mint failed: " + (err as Error).message);
+    } finally {
+      setMinting(false);
+    }
+  };
+
+  return (
+    <main className="flex flex-col items-center min-h-screen p-4 pt-8 md:pt-24 justify-start md:justify-center">
+      <div className="text-center space-y-4 w-full md:max-w-3xl">
+        <h1 className="text-4xl md:text-5xl font-videocond font-bold mb-2 md:mb-4">SIGN THE MANIFESTO</h1>
+        <p className="mx-auto md:max-w-3xl text-xl md:text-2xl mb-1 px-6 md:px-0">
+          Add your name to join the movement and unlock new colors.
+          Sign onchain to collect your own unique piece of generative art.
+        </p>
+        <div className="flex flex-col items-center">
+          <button
+            onClick={() => {
+              if (!authenticated) login();
+              else setModalOpen(true);
+            }}
+            className="border-2 border-black rounded-full px-5 py-2 font-videocond text-xl md:text-2xl hover:bg-black hover:text-white transition mt-4 cursor-pointer"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+            SIGN FOR FREE
+          </button>
+          {authenticated && (
+            <button
+              onClick={logout}
+              className="mt-2 text-black underline text-base font-videocond font-light hover:text-gray-700 cursor-pointer"
+              type="button"
+            >
+              Logout
+            </button>
+          )}
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+      </div>
+      <div className="mt-8 flex justify-center">
+        <img
+          src="/images/manifestooutputs.gif"
+          alt="Manifesto Art"
+          className="w-full max-w-md md:max-w-2xl mx-auto shadow-lg rounded-lg overflow-hidden"
+        />
+      </div>
+      <SignManifestoModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onSign={handleSign}
+        onConnectWallet={handleConnectWallet}
+        ensName={ensName}
+        onCollect={handleCollect}
+        minting={minting}
+      />
+    </main>
   );
 }

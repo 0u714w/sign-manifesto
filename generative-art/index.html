@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Generative Halftone Riso Art</title>
+  <meta name="viewport" content="width=1700, initial-scale=1">
+  <style>
+    body {
+      background: #222;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 100vh;
+    }
+    #p5-holder {
+      margin-top: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 32px 0 rgba(0,0,0,0.07);
+      background: #fff;
+      border-radius: 12px;
+      overflow: hidden;
+      width: 1700px;
+      height: 2200px;
+      transform: scale(0.4);
+      transform-origin: top center;
+      border: 2px solid #444;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #generate-btn {
+      padding: 0.6em 2em;
+      border: 2px solid #FFF;
+      background: transparent;
+      color: #FFF;
+      border-radius: 999px;
+      font-family: 'Video Cond Regular', Arial, sans-serif;
+      font-size: 1.2em;
+      cursor: pointer;
+      margin-bottom: 32px;
+      margin-top: 8px;
+      letter-spacing: 0.04em;
+      transition: background 0.2s, color 0.2s;
+    }
+    #generate-btn:hover, #generate-btn:focus {
+      background: #000;
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+    <button id="generate-btn">Generate New</button>
+  <div id="p5-holder"></div>
+ 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.min.js"></script>
+  <script src="sketch.js"></script>
+  <script>
+    // Attach p5 canvas to holder
+    let p5Canvas;
+    const origSetup = window.setup;
+    window.setup = function() {
+      origSetup();
+      if (window._renderer && document.getElementById('p5-holder')) {
+        document.getElementById('p5-holder').appendChild(window._renderer.canvas);
+      }
+    };
+    // Button
+    document.getElementById('generate-btn').onclick = function() {
+      if (window.generateNew) window.generateNew();
+    };
+  </script>
+</body>
+</html> 
