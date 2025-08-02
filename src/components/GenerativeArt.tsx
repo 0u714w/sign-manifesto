@@ -424,7 +424,7 @@ export async function drawGenerativeArtToCanvas({
   ctx.save();
   ctx.clearRect(0, 0, width, height);
 
-  // Background
+  // Draw background first (paper or white)
   if (whiteBackground) {
     ctx.fillStyle = "#fff";
     ctx.fillRect(0, 0, width, height);

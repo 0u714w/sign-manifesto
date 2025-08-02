@@ -164,39 +164,19 @@ export default function RevealPage() {
   }, [date, displayName, signerNumber, signature, uploaded]);
 
   const handleDownloadForPrint = async () => {
-    try {
-      // Create a hidden canvas with white background
-      const hiddenCanvas = document.createElement('canvas');
-      const hiddenCtx = hiddenCanvas.getContext('2d');
-      if (!hiddenCtx) {
-        alert('Failed to create download canvas.');
+    setBackground('white');
+    // Wait for the canvas to update
+    setTimeout(() => {
+      const canvas = document.querySelector('canvas');
+      if (!canvas) {
+        alert('Artwork not ready yet. Please wait for it to generate.');
+        setBackground('paper');
         return;
       }
-      
-      // Set canvas size
-      hiddenCanvas.width = 1700;
-      hiddenCanvas.height = 2200;
-      
-      // Fill with white background
-      hiddenCtx.fillStyle = '#ffffff';
-      hiddenCtx.fillRect(0, 0, hiddenCanvas.width, hiddenCanvas.height);
-      
-      // Draw the artwork with white background using the same function
-      await drawGenerativeArtToCanvas({
-        ctx: hiddenCtx,
-        name: displayName,
-        date,
-        signature,
-        signerNumber,
-        width: 1700,
-        height: 2200,
-        whiteBackground: true,
-      });
-      
-      // Convert to blob and download
-      hiddenCanvas.toBlob((blob) => {
+      canvas.toBlob((blob) => {
         if (!blob) {
           alert('Failed to generate download image.');
+          setBackground('paper');
           return;
         }
         const url = URL.createObjectURL(blob);
@@ -207,11 +187,9 @@ export default function RevealPage() {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
+        setBackground('paper');
       }, "image/png");
-    } catch (error) {
-      console.error('Error downloading artwork:', error);
-      alert('Failed to download artwork. Please try again.');
-    }
+    }, 300); // Wait 300ms for re-render
   };
 
   const handleShareToX = async () => {
@@ -319,7 +297,7 @@ export default function RevealPage() {
             <div className="mt-8 mb-6 md:mb-12 flex justify-center">
         <div className="w-full max-w-md md:max-w-2xl mx-auto shadow-lg rounded-lg overflow-hidden">
           <GenerativeArt
-            key={`${signerNumber}-${signature}`}
+            key={`${signerNumber}-${signature}-${background}`}
             name={displayName}
             date={date}
             signature={signature}
