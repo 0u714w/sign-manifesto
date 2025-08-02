@@ -164,13 +164,37 @@ export default function RevealPage() {
   }, [date, displayName, signerNumber, signature, uploaded]);
 
   const handleDownloadForPrint = async () => {
-    setBackground('white');
-    // Wait for the canvas to update
-    setTimeout(() => {
-      const canvas = document.querySelector('canvas');
-      if (!canvas) return;
+    try {
+      // Create a separate canvas for download
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        alert('Failed to create download canvas.');
+        return;
+      }
+      
+      // Set canvas size
+      canvas.width = 1700;
+      canvas.height = 2200;
+      
+      // Draw the artwork with white background
+      await drawGenerativeArtToCanvas({
+        ctx,
+        name: displayName,
+        date,
+        signature,
+        signerNumber,
+        width: 1700,
+        height: 2200,
+        whiteBackground: true,
+      });
+      
+      // Convert to blob and download
       canvas.toBlob((blob) => {
-        if (!blob) return;
+        if (!blob) {
+          alert('Failed to generate download image.');
+          return;
+        }
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
@@ -179,9 +203,11 @@ export default function RevealPage() {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        setBackground('paper');
       }, "image/png");
-    }, 300); // Wait 300ms for re-render
+    } catch (error) {
+      console.error('Error downloading artwork:', error);
+      alert('Failed to download artwork. Please try again.');
+    }
   };
 
   const handleShareToX = async () => {
@@ -289,7 +315,7 @@ export default function RevealPage() {
             <div className="mt-8 mb-6 md:mb-12 flex justify-center">
         <div className="w-full max-w-md md:max-w-2xl mx-auto shadow-lg rounded-lg overflow-hidden">
           <GenerativeArt
-            key={`${signerNumber}-${signature}-${background}`}
+            key={`${signerNumber}-${signature}`}
             name={displayName}
             date={date}
             signature={signature}
