@@ -167,54 +167,69 @@ export default function RevealPage() {
   const handleDownloadForPrint = async () => {
     setIsDownloading(true);
     
-    try {
-      // Create a hidden canvas for download
-      const hiddenCanvas = document.createElement('canvas');
-      const hiddenCtx = hiddenCanvas.getContext('2d');
-      if (!hiddenCtx) {
-        alert('Failed to create download canvas.');
-        setIsDownloading(false);
-        return;
-      }
-      
-      // Set canvas size
-      hiddenCanvas.width = 1700;
-      hiddenCanvas.height = 2200;
-      
-      // Draw the artwork with white background using the standalone function
-      await drawGenerativeArtToCanvas({
-        ctx: hiddenCtx,
-        name: displayName,
-        date,
-        signature,
-        signerNumber,
-        width: 1700,
-        height: 2200,
-        whiteBackground: true,
-      });
-      
-      // Convert to blob and download
-      hiddenCanvas.toBlob((blob) => {
-        if (!blob) {
-          alert('Failed to generate download image.');
-          setIsDownloading(false);
-          return;
-        }
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "manifesto-artwork.png";
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        setIsDownloading(false);
-      }, "image/png");
-    } catch (error) {
-      console.error('Error downloading artwork:', error);
-      alert('Failed to download artwork. Please try again.');
-      setIsDownloading(false);
+    // Temporarily hide the display and show loading overlay
+    const originalDisplay = document.querySelector('.artwork-display') as HTMLElement;
+    if (originalDisplay) {
+      originalDisplay.style.opacity = '0';
     }
+    
+    // Create loading overlay
+    const loadingOverlay = document.createElement('div');
+    loadingOverlay.style.position = 'fixed';
+    loadingOverlay.style.top = '0';
+    loadingOverlay.style.left = '0';
+    loadingOverlay.style.width = '100%';
+    loadingOverlay.style.height = '100%';
+    loadingOverlay.style.backgroundColor = 'rgba(255,255,255,0.9)';
+    loadingOverlay.style.display = 'flex';
+    loadingOverlay.style.alignItems = 'center';
+    loadingOverlay.style.justifyContent = 'center';
+    loadingOverlay.style.zIndex = '9999';
+    loadingOverlay.innerHTML = '<div class="text-center"><div class="font-videocond text-xl">Preparing download...</div></div>';
+    document.body.appendChild(loadingOverlay);
+    
+    // Change background to white
+    setBackground('white');
+    setArtworkLoading(true);
+    
+    // Wait for the artwork to be ready
+    const checkArtworkReady = () => {
+      const canvas = document.querySelector('canvas');
+      if (canvas && !artworkLoading) {
+        // Artwork is ready, capture and download
+        canvas.toBlob((blob) => {
+          if (!blob) {
+            alert('Failed to generate download image.');
+            cleanup();
+            return;
+          }
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "manifesto-artwork.png";
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          cleanup();
+        }, "image/png");
+      } else {
+        // Check again in 100ms
+        setTimeout(checkArtworkReady, 100);
+      }
+    };
+    
+    const cleanup = () => {
+      setBackground('paper');
+      setIsDownloading(false);
+      if (originalDisplay) {
+        originalDisplay.style.opacity = '1';
+      }
+      document.body.removeChild(loadingOverlay as HTMLElement);
+    };
+    
+    // Start checking after a short delay
+    setTimeout(checkArtworkReady, 100);
   };
 
   const handleShareToX = async () => {
@@ -321,9 +336,9 @@ export default function RevealPage() {
         </div>
       )}
             <div className="mt-8 mb-6 md:mb-12 flex justify-center">
-        <div className="w-full max-w-md md:max-w-2xl mx-auto shadow-lg rounded-lg overflow-hidden">
+        <div className="w-full max-w-md md:max-w-2xl mx-auto shadow-lg rounded-lg overflow-hidden artwork-display">
           <GenerativeArt
-            key={`${signerNumber}-${signature}`}
+            key={`${signerNumber}-${signature}-${background}`}
             name={displayName}
             date={date}
             signature={signature}
