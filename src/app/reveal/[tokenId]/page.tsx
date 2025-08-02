@@ -306,11 +306,12 @@ export default function RevealPage() {
       
       {artworkLoading && !isDownloading ? (
         <div className="text-center">
-          <img src="/images/loading-black.gif" alt="Loading" className="w-32 h-32 mx-auto mb-4" />
+          <img src="/images/loading-black2.gif" alt="Loading" className="w-32 h-32 mx-auto mb-4" />
           <div className="font-videocond text-xl md:text-2xl">Generating artwork...</div>
         </div>
-      ) : (
-        <div className="mt-8 mb-6 md:mb-12 flex justify-center">
+      ) : null}
+      
+      <div className="mt-8 mb-6 md:mb-12 flex justify-center">
         <div className="w-full max-w-md md:max-w-2xl mx-auto shadow-lg rounded-lg overflow-hidden artwork-display">
           <GenerativeArt
             key={`${signerNumber}-${signature}-${background}`}
@@ -319,11 +320,12 @@ export default function RevealPage() {
             signature={signature}
             signerNumber={signerNumber}
             background={background}
-            onArtworkReady={() => setArtworkLoading(false)}
+            onArtworkReady={() => {
+              setArtworkLoading(false);
+            }}
           />
         </div>
       </div>
-      )}
             {/* Uploading happens silently in the background */}
       
       

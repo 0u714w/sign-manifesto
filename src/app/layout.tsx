@@ -9,6 +9,25 @@ export const metadata: Metadata = {
   icons: {
     icon: '/images/Checks-Black.png',
   },
+  openGraph: {
+    title: "Sign the Digital Maverick Manifesto",
+    description: "Join the new Internet revolution and receive a one-of-a-kind generative artwork.",
+    images: [
+      {
+        url: '/images/splashimage.png',
+        width: 1200,
+        height: 630,
+        alt: 'Digital Maverick Manifesto',
+      },
+    ],
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: "Sign the Digital Maverick Manifesto",
+    description: "Join the new Internet revolution and receive a one-of-a-kind generative artwork.",
+    images: ['/images/splashimage.png'],
+  },
 };
 
 export default function RootLayout({
