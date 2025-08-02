@@ -167,28 +167,7 @@ export default function RevealPage() {
   const handleDownloadForPrint = async () => {
     setIsDownloading(true);
     
-    // Temporarily hide the display and show loading overlay
-    const originalDisplay = document.querySelector('.artwork-display') as HTMLElement;
-    if (originalDisplay) {
-      originalDisplay.style.opacity = '0';
-    }
-    
-    // Create loading overlay
-    const loadingOverlay = document.createElement('div');
-    loadingOverlay.style.position = 'fixed';
-    loadingOverlay.style.top = '0';
-    loadingOverlay.style.left = '0';
-    loadingOverlay.style.width = '100%';
-    loadingOverlay.style.height = '100%';
-    loadingOverlay.style.backgroundColor = 'rgba(255,255,255,0.9)';
-    loadingOverlay.style.display = 'flex';
-    loadingOverlay.style.alignItems = 'center';
-    loadingOverlay.style.justifyContent = 'center';
-    loadingOverlay.style.zIndex = '9999';
-    loadingOverlay.innerHTML = '<div class="text-center"><div class="font-videocond text-xl">Preparing download...</div></div>';
-    document.body.appendChild(loadingOverlay);
-    
-    // Change background to white
+    // Change background to white (this will re-render the component)
     setBackground('white');
     setArtworkLoading(true);
     
@@ -222,10 +201,6 @@ export default function RevealPage() {
     const cleanup = () => {
       setBackground('paper');
       setIsDownloading(false);
-      if (originalDisplay) {
-        originalDisplay.style.opacity = '1';
-      }
-      document.body.removeChild(loadingOverlay as HTMLElement);
     };
     
     // Start checking after a short delay
@@ -329,13 +304,13 @@ export default function RevealPage() {
         </div>
       </div>
       
-      {artworkLoading && (
-        <div className="mt-8 text-center">
-          <img src="/images/loading-black2.gif" alt="Loading" className="w-48 h-48 mx-auto mb-4" />
-          <div className="font-videocond text-xl md:text-2xl text-black">Generating artwork...</div>
+      {artworkLoading && !isDownloading ? (
+        <div className="text-center">
+          <img src="/images/loading-black.gif" alt="Loading" className="w-32 h-32 mx-auto mb-4" />
+          <div className="font-videocond text-xl md:text-2xl">Generating artwork...</div>
         </div>
-      )}
-            <div className="mt-8 mb-6 md:mb-12 flex justify-center">
+      ) : (
+        <div className="mt-8 mb-6 md:mb-12 flex justify-center">
         <div className="w-full max-w-md md:max-w-2xl mx-auto shadow-lg rounded-lg overflow-hidden artwork-display">
           <GenerativeArt
             key={`${signerNumber}-${signature}-${background}`}
@@ -348,7 +323,8 @@ export default function RevealPage() {
           />
         </div>
       </div>
-      {/* Uploading happens silently in the background */}
+      )}
+            {/* Uploading happens silently in the background */}
       
       
       <ZineByMailModal
