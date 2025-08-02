@@ -19,6 +19,7 @@ export default function RevealPage() {
   const [artworkLoading, setArtworkLoading] = useState(true);
   const [background, setBackground] = useState<'paper' | 'white'>('paper');
   const [zineModalOpen, setZineModalOpen] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   // Parse tokenId from params
   const signerNumber = Number(params?.tokenId);
@@ -164,38 +165,56 @@ export default function RevealPage() {
   }, [date, displayName, signerNumber, signature, uploaded]);
 
   const handleDownloadForPrint = async () => {
-    setBackground('white');
-    setArtworkLoading(true); // Reset loading state for re-render
+    setIsDownloading(true);
     
-    // Wait for the artwork to be ready after background change
-    const checkArtworkReady = () => {
-      const canvas = document.querySelector('canvas');
-      if (canvas && !artworkLoading) {
-        // Artwork is ready, capture and download
-        canvas.toBlob((blob) => {
-          if (!blob) {
-            alert('Failed to generate download image.');
-            setBackground('paper');
-            return;
-          }
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = "manifesto-artwork.png";
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-          setBackground('paper');
-        }, "image/png");
-      } else {
-        // Check again in 100ms
-        setTimeout(checkArtworkReady, 100);
+    try {
+      // Create a hidden canvas for download
+      const hiddenCanvas = document.createElement('canvas');
+      const hiddenCtx = hiddenCanvas.getContext('2d');
+      if (!hiddenCtx) {
+        alert('Failed to create download canvas.');
+        setIsDownloading(false);
+        return;
       }
-    };
-    
-    // Start checking after a short delay
-    setTimeout(checkArtworkReady, 100);
+      
+      // Set canvas size
+      hiddenCanvas.width = 1700;
+      hiddenCanvas.height = 2200;
+      
+      // Draw the artwork with white background using the standalone function
+      await drawGenerativeArtToCanvas({
+        ctx: hiddenCtx,
+        name: displayName,
+        date,
+        signature,
+        signerNumber,
+        width: 1700,
+        height: 2200,
+        whiteBackground: true,
+      });
+      
+      // Convert to blob and download
+      hiddenCanvas.toBlob((blob) => {
+        if (!blob) {
+          alert('Failed to generate download image.');
+          setIsDownloading(false);
+          return;
+        }
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "manifesto-artwork.png";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        setIsDownloading(false);
+      }, "image/png");
+    } catch (error) {
+      console.error('Error downloading artwork:', error);
+      alert('Failed to download artwork. Please try again.');
+      setIsDownloading(false);
+    }
   };
 
   const handleShareToX = async () => {
@@ -280,10 +299,11 @@ export default function RevealPage() {
         </div>
         <div className="flex flex-row gap-4 justify-center my-4">
           <button
-            className="border-2 border-black rounded-full px-3 md:px-4 py-1 md:py-2 font-videocond text-lg md:text-xl font-bold bg-white text-black hover:bg-black hover:text-white transition cursor-pointer"
+            className="border-2 border-black rounded-full px-3 md:px-4 py-1 md:py-2 font-videocond text-lg md:text-xl font-bold bg-white text-black hover:bg-black hover:text-white transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={handleDownloadForPrint}
+            disabled={isDownloading}
           >
-            DOWNLOAD FOR PRINT
+            {isDownloading ? "Please wait..." : "DOWNLOAD FOR PRINT"}
           </button>
           <button
             className="border-2 border-black rounded-full px-3 md:px-4 py-1 md:py-2 font-videocond text-lg md:text-xl font-bold bg-white text-black hover:bg-black hover:text-white transition cursor-pointer"
@@ -303,7 +323,7 @@ export default function RevealPage() {
             <div className="mt-8 mb-6 md:mb-12 flex justify-center">
         <div className="w-full max-w-md md:max-w-2xl mx-auto shadow-lg rounded-lg overflow-hidden">
           <GenerativeArt
-            key={`${signerNumber}-${signature}-${background}`}
+            key={`${signerNumber}-${signature}`}
             name={displayName}
             date={date}
             signature={signature}
