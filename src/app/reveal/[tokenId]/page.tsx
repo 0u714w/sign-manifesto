@@ -17,9 +17,9 @@ export default function RevealPage() {
   const [uploading, setUploading] = useState(false);
   const [uploaded, setUploaded] = useState(false);
   const [artworkLoading, setArtworkLoading] = useState(true);
-  const [background, setBackground] = useState<'paper' | 'white'>('paper');
   const [zineModalOpen, setZineModalOpen] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [showHiddenArtwork, setShowHiddenArtwork] = useState(false);
 
   // Parse tokenId from params
   const signerNumber = Number(params?.tokenId);
@@ -166,17 +166,14 @@ export default function RevealPage() {
 
   const handleDownloadForPrint = async () => {
     setIsDownloading(true);
+    setShowHiddenArtwork(true);
     
-    // Change background to white (this will re-render the component)
-    setBackground('white');
-    setArtworkLoading(true);
-    
-    // Wait for the artwork to be ready
-    const checkArtworkReady = () => {
-      const canvas = document.querySelector('canvas');
-      if (canvas && !artworkLoading) {
-        // Artwork is ready, capture and download
-        canvas.toBlob((blob) => {
+    // Wait for the hidden artwork to be ready
+    const checkHiddenArtworkReady = () => {
+      const hiddenCanvas = document.querySelector('.hidden-artwork canvas') as HTMLCanvasElement;
+      if (hiddenCanvas) {
+        // Hidden artwork is ready, capture and download
+        hiddenCanvas.toBlob((blob: Blob | null) => {
           if (!blob) {
             alert('Failed to generate download image.');
             cleanup();
@@ -194,17 +191,17 @@ export default function RevealPage() {
         }, "image/png");
       } else {
         // Check again in 100ms
-        setTimeout(checkArtworkReady, 100);
+        setTimeout(checkHiddenArtworkReady, 100);
       }
     };
     
     const cleanup = () => {
-      setBackground('paper');
       setIsDownloading(false);
+      setShowHiddenArtwork(false);
     };
     
     // Start checking after a short delay
-    setTimeout(checkArtworkReady, 100);
+    setTimeout(checkHiddenArtworkReady, 100);
   };
 
   const handleShareToX = async () => {
@@ -314,18 +311,35 @@ export default function RevealPage() {
       <div className="mt-8 mb-6 md:mb-12 flex justify-center">
         <div className="w-full max-w-md md:max-w-2xl mx-auto shadow-lg rounded-lg overflow-hidden artwork-display">
           <GenerativeArt
-            key={`${signerNumber}-${signature}-${background}`}
+            key={`${signerNumber}-${signature}`}
             name={displayName}
             date={date}
             signature={signature}
             signerNumber={signerNumber}
-            background={background}
+            background="paper"
             onArtworkReady={() => {
               setArtworkLoading(false);
             }}
           />
         </div>
       </div>
+      
+      {/* Hidden artwork for download */}
+      {showHiddenArtwork && (
+        <div className="hidden-artwork" style={{ position: 'absolute', left: '-9999px', top: '-9999px' }}>
+          <GenerativeArt
+            key={`${signerNumber}-${signature}-white`}
+            name={displayName}
+            date={date}
+            signature={signature}
+            signerNumber={signerNumber}
+            background="white"
+            onArtworkReady={() => {
+              // This callback is not needed for hidden artwork
+            }}
+          />
+        </div>
+      )}
             {/* Uploading happens silently in the background */}
       
       
