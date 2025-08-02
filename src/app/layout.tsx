@@ -21,7 +21,7 @@ export default function RootLayout({
           strategy="beforeInteractive"
         />
       </head>
-      <body className="relative min-h-screen overflow-x-hidden bg-white">
+      <body className="relative min-h-screen overflow-x-hidden">
         {/* Rotated background */}
         <div
           aria-hidden="true"

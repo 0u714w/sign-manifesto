@@ -104,10 +104,10 @@ export default function Home() {
   };
 
   return (
-    <main className="flex flex-col items-center min-h-screen p-4 pt-8 md:pt-24 justify-start md:justify-center bg-white">
+    <main className="flex flex-col items-center min-h-screen p-4 pt-8 md:pt-24 justify-start md:justify-center">
       <div className="text-center space-y-4 w-full md:max-w-3xl">
-        <h1 className="text-4xl md:text-5xl font-videocond font-bold mb-2 md:mb-4 text-black">SIGN THE MANIFESTO</h1>
-        <p className="mx-auto md:max-w-3xl text-xl md:text-2xl mb-1 px-6 md:px-0 text-black">
+        <h1 className="text-4xl md:text-5xl font-videocond font-bold mb-2 md:mb-4 text-black drop-shadow-lg">SIGN THE MANIFESTO</h1>
+        <p className="mx-auto md:max-w-3xl text-xl md:text-2xl mb-1 px-6 md:px-0 text-black drop-shadow-lg">
           Add your name to join the movement and unlock new colors.
           Sign onchain to collect your own unique piece of generative art.
         </p>
@@ -117,14 +117,14 @@ export default function Home() {
               if (!authenticated) login();
               else setModalOpen(true);
             }}
-            className="border-2 border-black rounded-full px-5 py-2 font-videocond text-xl md:text-2xl hover:bg-black hover:text-white transition mt-4 cursor-pointer bg-white text-black"
+            className="border-2 border-black rounded-full px-5 py-2 font-videocond text-xl md:text-2xl hover:bg-black hover:text-white transition mt-4 cursor-pointer bg-white text-black shadow-lg"
           >
             SIGN FOR FREE
           </button>
           {authenticated && (
             <button
               onClick={logout}
-              className="mt-2 text-black underline text-base font-videocond font-light hover:text-gray-700 cursor-pointer"
+              className="mt-2 text-black underline text-base font-videocond font-light hover:text-gray-700 cursor-pointer drop-shadow-lg"
               type="button"
             >
               Logout
