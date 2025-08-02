@@ -289,7 +289,7 @@ export default function RevealPage() {
             <div className="mt-8 mb-6 md:mb-12 flex justify-center">
         <div className="w-full max-w-md md:max-w-2xl mx-auto shadow-lg rounded-lg overflow-hidden">
           <GenerativeArt
-            key={`${signerNumber}-${signature}`}
+            key={`${signerNumber}-${signature}-${background}`}
             name={displayName}
             date={date}
             signature={signature}
