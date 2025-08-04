@@ -64,12 +64,12 @@ export default function Home() {
     try {
       const contractAddress = "0x01bD58aC51B1F8fC8d086C6564d2Dd9f4cA9A2Fe";
       
-      // Force Base Mainnet provider instead of using wallet's current chain
-      const provider = new ethers.JsonRpcProvider("https://mainnet.base.org");
+      // Use Privy's wallet
       const wallet = user?.wallet;
       if (!wallet) throw new Error("No wallet connected");
       
-      // Create contract instance with the wallet
+      // Create provider and use wallet as signer
+      const provider = new ethers.JsonRpcProvider("https://mainnet.base.org");
       const contract = new ethers.Contract(contractAddress, ManifestoMinterABI, wallet as any);
 
       // Call mint (pass empty string for signatureHash if not used)
