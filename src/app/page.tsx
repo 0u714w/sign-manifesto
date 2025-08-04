@@ -63,12 +63,17 @@ export default function Home() {
     setMinting(true);
     try {
       const contractAddress = "0x01bD58aC51B1F8fC8d086C6564d2Dd9f4cA9A2Fe";
-      const provider = new ethers.BrowserProvider(window.ethereum as any);
-      const signer = await provider.getSigner();
-      const contract = new ethers.Contract(contractAddress, ManifestoMinterABI, signer);
+      
+      // Force Base Mainnet provider instead of using wallet's current chain
+      const provider = new ethers.JsonRpcProvider("https://mainnet.base.org");
+      const wallet = user?.wallet;
+      if (!wallet) throw new Error("No wallet connected");
+      
+      // Create contract instance with the wallet
+      const contract = new ethers.Contract(contractAddress, ManifestoMinterABI, wallet as any);
 
       // Call mint (pass empty string for signatureHash if not used)
-      const tx = await contract.mint(name, "");
+      const tx = await contract.mint(name, "", { gasLimit: 300000 });
       const receipt = await tx.wait();
 
       // Find ManifestoSigned event
