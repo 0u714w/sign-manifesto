@@ -64,12 +64,20 @@ export default function Home() {
     try {
       const contractAddress = "0x01bD58aC51B1F8fC8d086C6564d2Dd9f4cA9A2Fe";
       
-      // Use Privy's wallet
+      // Check if user is on Base Mainnet
       const wallet = user?.wallet;
       if (!wallet) throw new Error("No wallet connected");
       
-      // Create provider and use wallet as signer
-      const provider = new ethers.JsonRpcProvider("https://mainnet.base.org");
+      // Get current network
+      const provider = new ethers.BrowserProvider(window.ethereum as any);
+      const network = await provider.getNetwork();
+      if (network.chainId !== BigInt(8453)) { // Base Mainnet chain ID
+        alert("Please switch to Base Mainnet to mint. Your wallet should prompt you to switch networks.");
+        setMinting(false);
+        return;
+      }
+      
+      // Use the wallet directly with ethers
       const contract = new ethers.Contract(contractAddress, ManifestoMinterABI, wallet as any);
 
       // Call mint (pass empty string for signatureHash if not used)
