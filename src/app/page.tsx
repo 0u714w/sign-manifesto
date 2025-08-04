@@ -65,23 +65,56 @@ export default function Home() {
       const contractAddress = "0x01bD58aC51B1F8fC8d086C6564d2Dd9f4cA9A2Fe";
       
       // Check if user is on Base Mainnet
-      const wallet = user?.wallet;
-      if (!wallet) throw new Error("No wallet connected");
-      
-      // Get current network
       const provider = new ethers.BrowserProvider(window.ethereum as any);
       const network = await provider.getNetwork();
       if (network.chainId !== BigInt(8453)) { // Base Mainnet chain ID
-        alert("Please switch to Base Mainnet to mint. Your wallet should prompt you to switch networks.");
-        setMinting(false);
-        return;
+        try {
+          // Try to switch to Base Mainnet automatically
+          if (window.ethereum) {
+            await (window.ethereum as any).request({
+              method: 'wallet_switchEthereumChain',
+              params: [{ chainId: '0x2105' }], // Base Mainnet chain ID in hex
+            });
+          }
+        } catch (switchError: any) {
+          // If the network doesn't exist in the wallet, add it
+          if (switchError.code === 4902) {
+            try {
+              if (window.ethereum) {
+                await (window.ethereum as any).request({
+                  method: 'wallet_addEthereumChain',
+                  params: [{
+                    chainId: '0x2105',
+                    chainName: 'Base',
+                    nativeCurrency: {
+                      name: 'ETH',
+                      symbol: 'ETH',
+                      decimals: 18
+                    },
+                    rpcUrls: ['https://mainnet.base.org'],
+                    blockExplorerUrls: ['https://basescan.org']
+                  }]
+                });
+              }
+            } catch (addError) {
+              alert("Please switch to Base Mainnet to mint. Your wallet should prompt you to add the network.");
+              setMinting(false);
+              return;
+            }
+          } else {
+            alert("Please switch to Base Mainnet to mint. Your wallet should prompt you to switch networks.");
+            setMinting(false);
+            return;
+          }
+        }
       }
       
-      // Use the wallet directly with ethers
-      const contract = new ethers.Contract(contractAddress, ManifestoMinterABI, wallet as any);
+      // Use the original simple approach that was working
+      const signer = await provider.getSigner();
+      const contract = new ethers.Contract(contractAddress, ManifestoMinterABI, signer);
 
       // Call mint (pass empty string for signatureHash if not used)
-      const tx = await contract.mint(name, "", { gasLimit: 300000 });
+      const tx = await contract.mint(name, "");
       const receipt = await tx.wait();
 
       // Find ManifestoSigned event
