@@ -1,7 +1,7 @@
 "use client";
 import { useParams, useSearchParams } from "next/navigation";
 import GenerativeArt from "@/components/GenerativeArt";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { create } from '@web3-storage/w3up-client';
 import ZineByMailModal from "@/components/ZineByMailModal";
 
@@ -20,6 +20,9 @@ export default function RevealPage() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [showHiddenArtwork, setShowHiddenArtwork] = useState(false);
   const [uploadAttempted, setUploadAttempted] = useState(false);
+  const [uploadInProgress, setUploadInProgress] = useState(false);
+  const uploadInitiatedRef = useRef(false);
+  const [artworkRendered, setArtworkRendered] = useState(false);
 
   // Parse tokenId from params
   const signerNumber = Number(params?.tokenId);
@@ -72,8 +75,10 @@ export default function RevealPage() {
 
   // Upload to IPFS and set token URI
   useEffect(() => {
-    if (date && name && signerNumber && signature && !uploaded && !uploadAttempted) {
+    if (date && name && signerNumber && signature && !uploaded && !uploadAttempted && !uploadInProgress && !uploadInitiatedRef.current && artworkRendered) {
+      uploadInitiatedRef.current = true;
       setUploadAttempted(true);
+      setUploadInProgress(true);
       const displayName = name || truncateAddress(walletAddress);
       console.log("Preparing to upload:", { displayName, date, signerNumber, signature });
       setUploading(true);
@@ -89,101 +94,121 @@ export default function RevealPage() {
           await client.login(email);
           console.log('Logged in to IPFS, setting current space...');
           await client.setCurrentSpace(spaceDid);
-          console.log('Current space set, waiting for canvas...');
-          setTimeout(async () => {
+          console.log('Current space set, preparing for upload...');
+          
+          // Wait for canvas to be ready
+          const waitForCanvas = () => {
             const canvas = document.querySelector('canvas');
-            console.log("Canvas found:", !!canvas, canvas);
-            if (!canvas) {
-              setUploading(false);
-              return;
+            if (canvas) {
+              console.log("Canvas found, proceeding with upload...");
+              performUpload(canvas);
+            } else {
+              console.log("Canvas not ready, retrying...");
+              setTimeout(waitForCanvas, 100);
             }
-            // Convert canvas to blob
-            console.log("Converting canvas to blob...");
-            const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
-            if (!blob) {
-              setUploading(false);
-              alert("Failed to convert canvas to image blob.");
-              return;
-            }
-            // Prepare files for Storacha
-            const artworkFile = new File([blob], 'artwork.png', { type: 'image/png' });
-            
-            // Upload both files together
-            console.log("Uploading artwork and metadata to IPFS...");
-            
-            // Create metadata first
-            interface Metadata {
-              name: string;
-              description: string;
-              image?: string;
-              attributes: Array<{
-                trait_type: string;
-                value: string;
-              }>;
-            }
-            
-            // Upload artwork first
-            const artworkCid = await client.uploadDirectory([artworkFile]);
-            console.log('Uploaded artwork CID:', artworkCid);
-            
-            // Create metadata with the artwork's CID
-            const metadata: Metadata = {
-              name: `Digital Maverick Manifesto #${signerNumber}`,
-              description: `Your unique generative manifesto artwork, signed by ${displayName} on ${date}.`,
-              image: `ipfs://${artworkCid}/artwork.png`,
-              attributes: [
-                { trait_type: "Signer", value: displayName },
-                { trait_type: "Date", value: date },
-                { trait_type: "Token ID", value: signerNumber.toString() },
-                { trait_type: "Transaction Hash", value: signature }
-              ]
-            };
-            
-            // Create and upload metadata file
-            const metadataFile = new File([JSON.stringify(metadata)], 'metadata.json', { type: 'application/json' });
-            const metadataCid = await client.uploadDirectory([metadataFile]);
-            console.log('Uploaded metadata CID:', metadataCid);
-            
-            const ipfsArtworkUrl = `ipfs://${artworkCid}/artwork.png`;
-            const metadataUrl = `ipfs://${metadataCid}/metadata.json`;
-            console.log('Artwork IPFS URL:', ipfsArtworkUrl);
-            console.log('Metadata IPFS URL:', metadataUrl);
-
-            // Update token URI via server-side API
+          };
+          
+          const performUpload = async (canvas: HTMLCanvasElement) => {
             try {
-              const response = await fetch('/api/update-token-uri', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  tokenId: signerNumber,
-                  metadataUrl: metadataUrl
-                }),
-              });
-
-              const result = await response.json();
-              
-              if (response.ok) {
-                console.log('Token URI updated successfully:', result.transactionHash);
-              } else {
-                console.error('Failed to update token URI:', result.error);
+              // Convert canvas to blob
+              console.log("Converting canvas to blob...");
+              const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+              if (!blob) {
+                setUploading(false);
+                setUploadInProgress(false);
+                alert("Failed to convert canvas to image blob.");
+                return;
               }
-            } catch (err) {
-              console.error('Error updating token URI:', err);
+              
+              // Prepare files for Storacha
+              const artworkFile = new File([blob], 'artwork.png', { type: 'image/png' });
+              
+              // Upload both files together
+              console.log("Uploading artwork and metadata to IPFS...");
+              
+              // Create metadata first
+              interface Metadata {
+                name: string;
+                description: string;
+                image?: string;
+                attributes: Array<{
+                  trait_type: string;
+                  value: string;
+                }>;
+              }
+              
+              // Upload artwork first
+              const artworkCid = await client.uploadDirectory([artworkFile]);
+              console.log('Uploaded artwork CID:', artworkCid);
+              
+              // Create metadata with the artwork's CID
+              const metadata: Metadata = {
+                name: `Digital Maverick Manifesto #${signerNumber}`,
+                description: `Your unique generative manifesto artwork, signed by ${displayName} on ${date}.`,
+                image: `ipfs://${artworkCid}/artwork.png`,
+                attributes: [
+                  { trait_type: "Signer", value: displayName },
+                  { trait_type: "Date", value: date },
+                  { trait_type: "Token ID", value: signerNumber.toString() },
+                  { trait_type: "Transaction Hash", value: signature }
+                ]
+              };
+              
+              // Create and upload metadata file
+              const metadataFile = new File([JSON.stringify(metadata)], 'metadata.json', { type: 'application/json' });
+              const metadataCid = await client.uploadDirectory([metadataFile]);
+              console.log('Uploaded metadata CID:', metadataCid);
+              
+              const ipfsArtworkUrl = `ipfs://${artworkCid}/artwork.png`;
+              const metadataUrl = `ipfs://${metadataCid}/metadata.json`;
+              console.log('Artwork IPFS URL:', ipfsArtworkUrl);
+              console.log('Metadata IPFS URL:', metadataUrl);
+
+              // Update token URI via server-side API
+              try {
+                const response = await fetch('/api/update-token-uri', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    tokenId: signerNumber,
+                    metadataUrl: metadataUrl
+                  }),
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                  console.log('Token URI updated successfully:', result.transactionHash);
+                } else {
+                  console.error('Failed to update token URI:', result.error);
+                }
+              } catch (err) {
+                console.error('Error updating token URI:', err);
+              }
+              
+              setUploading(false);
+              setUploaded(true);
+              setUploadInProgress(false);
+            } catch (error) {
+              console.error('Error in upload process:', error);
+              setUploading(false);
+              setUploadInProgress(false);
             }
-            
-            setUploading(false);
-            setUploaded(true);
-          }, 500);
+          };
+          
+          // Start waiting for canvas
+          waitForCanvas();
         } catch (error) {
           console.error('Error in IPFS upload process:', error);
           setUploading(false);
+          setUploadInProgress(false);
         }
       };
       uploadAndSetTokenURI();
     }
-  }, [date, name, signerNumber, signature, uploaded, uploadAttempted, walletAddress]);
+  }, [date, name, signerNumber, signature, uploaded, uploadAttempted, uploadInProgress, artworkRendered, walletAddress]);
 
   const handleDownloadForPrint = async () => {
     setIsDownloading(true);
@@ -318,7 +343,7 @@ export default function RevealPage() {
       </div>
       
       {artworkLoading && !isDownloading ? (
-        <div className="text-center">
+        <div className="text-center mt-8 md:mt-12">
           <img src="/images/loading-black2.gif" alt="Loading" className="w-32 h-32 mx-auto mb-4" />
           <div className="font-videocond text-xl md:text-2xl">Generating artwork...</div>
         </div>
@@ -335,6 +360,7 @@ export default function RevealPage() {
             background="paper"
             onArtworkReady={() => {
               setArtworkLoading(false);
+              setArtworkRendered(true);
             }}
           />
         </div>
