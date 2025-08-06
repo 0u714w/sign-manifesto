@@ -12,6 +12,7 @@
     "@emailjs/browser": "^4.4.1",
     "@farcaster/miniapp-sdk": "^0.1.8",
     "@privy-io/react-auth": "^2.21.0",
+    "@sparticuz/chromium": "^138.0.2",
     "@web3-storage/w3up-client": "^17.3.0",
     "autoprefixer": "^10.4.21",
     "bs58": "^6.0.0",
@@ -21,11 +22,13 @@
     "next": "^14.2.29",
     "nft.storage": "^3.4.0",
     "permissionless": "^0.2.52",
+    "playwright-core": "^1.54.2",
     "postcss": "^8.5.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-p5": "^1.4.1",
     "react-places-autocomplete": "^7.3.0",
+    "skia-canvas": "^2.0.2",
     "viem": "^2.33.2"
   },
   "devDependencies": {

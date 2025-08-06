@@ -1,0 +1,190 @@
+import type { NextApiRequest, NextApiResponse } from 'next';
+import puppeteer from 'puppeteer';
+import fs from 'fs';
+import path from 'path';
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  let browser;
+  try {
+    const { name, date, signature, signerNumber, isMobile } = req.body;
+    console.log("Generate artwork request:", { name, date, signature, signerNumber, isMobile });
+
+    if (!name || !date || !signature || !signerNumber) {
+      console.error("Missing required parameters:", { name, date, signature, signerNumber });
+      return res.status(400).json({ error: 'Missing required parameters' });
+    }
+
+    // Launch puppeteer
+    console.log("Launching Puppeteer browser...");
+    browser = await puppeteer.launch({
+      headless: 'new',
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+    });
+
+    const page = await browser.newPage();
+
+    // Set viewport size based on mobile/desktop
+    const width = isMobile ? 850 : 1700;
+    const height = isMobile ? 1100 : 2200;
+    
+    await page.setViewport({ width, height });
+    console.log(`Set viewport to ${width}x${height}`);
+
+    // Read your p5.js sketch
+    const sketchPath = path.join(process.cwd(), 'generative-art', 'sketch.js');
+    let sketchCode = '';
+    
+    if (fs.existsSync(sketchPath)) {
+      sketchCode = fs.readFileSync(sketchPath, 'utf-8');
+      console.log("Loaded sketch.js, length:", sketchCode.length);
+    } else {
+      console.error("sketch.js not found at:", sketchPath);
+      throw new Error('sketch.js not found');
+    }
+
+    // Create HTML page with p5.js and your sketch
+    const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+      <style>
+        body { margin: 0; padding: 0; overflow: hidden; background: white; }
+        canvas { display: block; }
+      </style>
+    </head>
+    <body>
+      <script>
+        // Override sketch variables with server data
+        const serverData = {
+          name: "${name.replace(/"/g, '\\"')}",
+          date: "${date.replace(/"/g, '\\"')}", 
+          signature: "${signature}",
+          signerNumber: ${signerNumber},
+          isMobile: ${isMobile}
+        };
+        
+        console.log("Server data:", serverData);
+        
+        // Set global variables before sketch loads
+        let signerCount = ${Math.min(signerNumber, 10000)};
+        let seed = ${parseInt(signature.slice(-8), 16) % 100000};
+        
+        ${sketchCode}
+        
+        // Override the original draw function to customize text
+        const originalSetup = window.setup;
+        const originalDraw = window.draw;
+        
+        window.setup = function() {
+          if (originalSetup) originalSetup();
+          console.log("Setup complete, canvas created");
+        };
+        
+        window.draw = function() {
+          if (originalDraw) {
+            // Call the original draw function first
+            originalDraw();
+          }
+          
+          // Override the text at the bottom with server data
+          push();
+          textAlign(CENTER);
+          textSize(${isMobile ? 24 : 48});
+          fill(0);
+          
+          // Try to use the loaded fonts, fallback to Arial
+          if (typeof videoCondRegular !== 'undefined') {
+            textFont(videoCondRegular);
+          } else {
+            textFont('Arial');
+          }
+          
+          text("THE DIGITAL MAVERICK MANIFESTO", width / 2, height - ${isMobile ? 100 : 200});
+          
+          textSize(${isMobile ? 16 : 32});
+          if (typeof argentPixelItalic !== 'undefined') {
+            textFont(argentPixelItalic);
+          } else {
+            textFont('Arial');
+          }
+          
+          text("Signed by " + serverData.name + " on " + serverData.date, width / 2, height - ${isMobile ? 75 : 150});
+          
+          textSize(${isMobile ? 14 : 28});
+          if (typeof videoCondLight !== 'undefined') {
+            textFont(videoCondLight);
+          } else {
+            textFont('Arial');
+          }
+          fill(180);
+          const displaySig = serverData.signature.length > 20 ? 
+            serverData.signature.slice(0, 10) + "..." + serverData.signature.slice(-10) : 
+            serverData.signature;
+          text(displaySig, width / 2, height - ${isMobile ? 50 : 100});
+          
+          // Token ID at bottom right
+          textAlign(RIGHT);
+          textSize(${isMobile ? 20 : 40});
+          fill(0);
+          if (typeof profesorRegular !== 'undefined') {
+            textFont(profesorRegular);
+          } else {
+            textFont('Arial');
+          }
+          text('#' + serverData.signerNumber, width - 50, height - ${isMobile ? 30 : 60});
+          pop();
+          
+          // Stop the loop after first frame
+          noLoop();
+          
+          // Signal that artwork is ready
+          console.log("Artwork rendered, ready for screenshot");
+          window.artworkReady = true;
+        };
+      </script>
+    </body>
+    </html>`;
+
+    console.log("Loading HTML content into page...");
+    // Load the HTML
+    await page.setContent(html);
+
+    // Wait for the artwork to be ready with longer timeout
+    console.log("Waiting for artwork to render...");
+    await page.waitForFunction(() => window.artworkReady, { timeout: 15000 });
+    console.log("Artwork is ready!");
+
+    // Take screenshot
+    console.log("Taking screenshot...");
+    const screenshotBuffer = await page.screenshot({
+      type: 'png',
+      fullPage: false,
+      clip: { x: 0, y: 0, width, height }
+    });
+
+    console.log('PNG generated successfully, size:', screenshotBuffer.length);
+
+    // Set response headers
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Cache-Control', 'public, max-age=31536000');
+    res.status(200).send(screenshotBuffer);
+    console.log('PNG response sent successfully');
+
+  } catch (error) {
+    console.error('Error generating artwork:', error);
+    res.status(500).json({ 
+      error: 'Failed to generate artwork', 
+      details: error instanceof Error ? error.message : 'Unknown error' 
+    });
+  } finally {
+    if (browser) {
+      console.log("Closing browser...");
+      await browser.close();
+    }
+  }
+}

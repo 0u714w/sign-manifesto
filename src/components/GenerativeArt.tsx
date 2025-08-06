@@ -184,50 +184,66 @@ export default function GenerativeArt({ name, date, signature, signerNumber, bac
 
   // p5 setup
   const setup = useCallback((p5: any, canvasParentRef: any) => {
-    // Art block dimensions
-    const CANVAS_W = 1700;
-    const CANVAS_H = 2200;
-    const ART_W = 1428;
-    const ART_H = 1785;
-    const MARGIN_BOTTOM = 279;
-    const MARGIN_TOP = (CANVAS_H - ART_H - MARGIN_BOTTOM);
-    const MARGIN_LEFT = (CANVAS_W - ART_W) / 2;
-    p5.createCanvas(CANVAS_W, CANVAS_H).parent(canvasParentRef);
-    p5.pixelDensity(1);
-    p5.noSmooth();
-    const seed = hashToSeed(signature);
-    p5.randomSeed(seed);
-    p5.noiseSeed(seed);
-    p5.staticIcons = generateStaticIcons(p5, ART_W, ART_H, p5.iconPngImgs);
-    p5.CANVAS_W = CANVAS_W;
-    p5.CANVAS_H = CANVAS_H;
-    p5.ART_W = ART_W;
-    p5.ART_H = ART_H;
-    p5.MARGIN_BOTTOM = MARGIN_BOTTOM;
-    p5.MARGIN_TOP = MARGIN_TOP;
-    p5.MARGIN_LEFT = MARGIN_LEFT;
-    p5.seed = seed;
-    p5.artworkDrawn = false; // Flag to track if artwork has been drawn
+    try {
+      // Keep same canvas size for consistent artwork
+      const CANVAS_W = 1700;
+      const CANVAS_H = 2200;
+      const ART_W = 1428;
+      const ART_H = 1785;
+      const MARGIN_BOTTOM = 279;
+      const MARGIN_TOP = (CANVAS_H - ART_H - MARGIN_BOTTOM);
+      const MARGIN_LEFT = (CANVAS_W - ART_W) / 2;
+      // Detect mobile for optimizations
+      const isMobile = window.innerWidth < 768;
+      
+      p5.createCanvas(CANVAS_W, CANVAS_H).parent(canvasParentRef);
+      p5.pixelDensity(isMobile ? 0.5 : 1); // Lower pixel density on mobile for performance
+      p5.noSmooth();
+      const seed = hashToSeed(signature);
+      p5.randomSeed(seed);
+      p5.noiseSeed(seed);
+      p5.staticIcons = generateStaticIcons(p5, ART_W, ART_H, p5.iconPngImgs);
+      p5.CANVAS_W = CANVAS_W;
+      p5.CANVAS_H = CANVAS_H;
+      p5.ART_W = ART_W;
+      p5.ART_H = ART_H;
+      p5.MARGIN_BOTTOM = MARGIN_BOTTOM;
+      p5.MARGIN_TOP = MARGIN_TOP;
+      p5.MARGIN_LEFT = MARGIN_LEFT;
+      p5.seed = seed;
+      p5.artworkDrawn = false; // Flag to track if artwork has been drawn
+      p5.isMobile = isMobile; // Store mobile flag for draw optimizations
+    } catch (error) {
+      console.error('Error in p5 setup:', error);
+      setIsLoading(false);
+    }
   }, [signature]);
 
   // p5 draw
   const draw = useCallback((p5: any) => {
-    const CANVAS_W = p5.CANVAS_W;
-    const CANVAS_H = p5.CANVAS_H;
-    const ART_W = p5.ART_W;
-    const ART_H = p5.ART_H;
-    const MARGIN_BOTTOM = p5.MARGIN_BOTTOM;
-    const MARGIN_TOP = p5.MARGIN_TOP;
-    const MARGIN_LEFT = p5.MARGIN_LEFT;
-    const seed = p5.seed;
-    const staticIcons = p5.staticIcons;
-    const signerCount = signerNumber;
-    p5.imageMode(p5.CORNER);
-    if (background === 'white') {
-      p5.background(255);
-    } else {
-      p5.image(p5.paperBgImg, 0, 0, CANVAS_W, CANVAS_H);
-    }
+    try {
+      const CANVAS_W = p5.CANVAS_W;
+      const CANVAS_H = p5.CANVAS_H;
+      const ART_W = p5.ART_W;
+      const ART_H = p5.ART_H;
+      const MARGIN_BOTTOM = p5.MARGIN_BOTTOM;
+      const MARGIN_TOP = p5.MARGIN_TOP;
+      const MARGIN_LEFT = p5.MARGIN_LEFT;
+      const seed = p5.seed;
+            const staticIcons = p5.staticIcons;
+      const signerCount = signerNumber;
+      const isMobile = p5.isMobile;
+      
+      p5.imageMode(p5.CORNER);
+      if (background === 'white') {
+        p5.background(255);
+      } else {
+        p5.image(p5.paperBgImg, 0, 0, CANVAS_W, CANVAS_H);
+      }
+      
+      // Mobile optimizations: reduce complexity for better performance
+      const dotDensity = isMobile ? 0.7 : 1; // Fewer dots on mobile
+      const noiseScale = isMobile ? 0.8 : 1; // Slightly different noise scale
     p5.push();
     p5.translate(MARGIN_LEFT, MARGIN_TOP);
     p5.drawingContext.save();
@@ -235,6 +251,10 @@ export default function GenerativeArt({ name, date, signature, signerNumber, bac
     p5.drawingContext.rect(0, 0, ART_W, ART_H);
     p5.drawingContext.clip();
     let baseDensity = p5.map(signerCount, 1, 1000, 80, 120, true);
+    // Apply mobile optimizations to density
+    if (isMobile) {
+      baseDensity *= 0.7; // Reduce density on mobile for better performance
+    }
     drawDotField(p5, {
       baseColor: p5.color(255, 232, 0),
       noiseSeedOffset: 0,
@@ -349,11 +369,15 @@ export default function GenerativeArt({ name, date, signature, signerNumber, bac
     p5.textFont(p5.profesorRegular);
     p5.text(`#${signerNumber}`, MARGIN_LEFT + ART_W - 10, MARGIN_TOP + ART_H + 40);
     
-    // Call onArtworkReady after the first draw cycle is complete
-    if (!p5.artworkDrawn) {
-      p5.artworkDrawn = true;
+          // Call onArtworkReady after the first draw cycle is complete
+      if (!p5.artworkDrawn) {
+        p5.artworkDrawn = true;
+        setIsLoading(false);
+        onArtworkReady?.();
+      }
+    } catch (error) {
+      console.error('Error in p5 draw:', error);
       setIsLoading(false);
-      onArtworkReady?.();
     }
   }, [name, date, signature, signerNumber, background, onArtworkReady]);
 

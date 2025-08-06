@@ -1,0 +1,57 @@
+import type { NextApiRequest, NextApiResponse } from 'next';
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  try {
+    const { name, date, signature, signerNumber, isMobile } = req.body;
+    console.log("Generate artwork request:", { name, date, signature, signerNumber, isMobile });
+
+    if (!name || !date || !signature || !signerNumber) {
+      console.error("Missing required parameters:", { name, date, signature, signerNumber });
+      return res.status(400).json({ error: 'Missing required parameters' });
+    }
+
+    // Use smaller dimensions for mobile
+    const width = isMobile ? 850 : 1700;
+    const height = isMobile ? 1100 : 2200;
+    console.log("Image dimensions:", { width, height });
+
+    // Generate a simple SVG placeholder for now
+    const svg = `
+      <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <pattern id="dots" x="20" y="20" width="40" height="40" patternUnits="userSpaceOnUse">
+            <circle cx="20" cy="20" r="2" fill="#FFE800" opacity="0.7"/>
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="#F5F5DC"/>
+        <rect width="100%" height="100%" fill="url(#dots)"/>
+        <text x="50%" y="50%" text-anchor="middle" font-family="Arial, sans-serif" font-size="48" fill="#000">
+          <tspan x="50%" dy="-100">THE DIGITAL MAVERICK MANIFESTO</tspan>
+          <tspan x="50%" dy="60">Signed by ${name}</tspan>
+          <tspan x="50%" dy="40">on ${date}</tspan>
+          <tspan x="50%" dy="40" font-size="24">Token #${signerNumber}</tspan>
+        </text>
+      </svg>
+    `;
+
+    console.log("SVG generated successfully, length:", svg.length);
+    console.log("SVG preview:", svg.substring(0, 200) + "...");
+
+    // Set response headers
+    res.setHeader('Content-Type', 'image/svg+xml');
+    res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
+    res.status(200).send(svg);
+    console.log("Response sent successfully");
+
+  } catch (error) {
+    console.error('Error generating artwork:', error);
+    res.status(500).json({ 
+      error: 'Failed to generate artwork', 
+      details: error instanceof Error ? error.message : 'Unknown error' 
+    });
+  }
+} 

@@ -24,6 +24,7 @@ export default function RevealPage() {
   // Parse tokenId from params
   const signerNumber = Number(params?.tokenId);
 
+  // Set wallet address
   useEffect(() => {
     const addr = searchParams?.get("wallet") || "";
     setWalletAddress(addr);
@@ -32,36 +33,48 @@ export default function RevealPage() {
   // Fetch onchain date from contract
   useEffect(() => {
     async function fetchTimestamp() {
-      console.log("signerNumber:", signerNumber);
-      if (!signerNumber) return;
+      console.log("fetchTimestamp called with signerNumber:", signerNumber);
+      if (!signerNumber) {
+        console.log("No signerNumber, returning early");
+        return;
+      }
       
       try {
+        console.log("Fetching token metadata for tokenId:", signerNumber);
         const response = await fetch(`/api/get-token-metadata?tokenId=${signerNumber}`);
         const result = await response.json();
         
+        console.log("Token metadata response:", result);
+        
         if (response.ok && result.data.timestamp) {
-          setDate(new Date(result.data.timestamp * 1000).toLocaleDateString(undefined, {
+          const dateString = new Date(result.data.timestamp * 1000).toLocaleDateString(undefined, {
             year: 'numeric',
             month: 'long',
             day: 'numeric',
-          }));
+          });
+          console.log("Setting date from timestamp:", dateString);
+          setDate(dateString);
         } else {
-          console.log("No timestamp found for tokenId", signerNumber);
+          console.log("No timestamp found for tokenId", signerNumber, "using fallback date");
           // Set a fallback date to prevent infinite loops
-          setDate(new Date().toLocaleDateString(undefined, {
+          const fallbackDate = new Date().toLocaleDateString(undefined, {
             year: 'numeric',
             month: 'long',
             day: 'numeric',
-          }));
+          });
+          console.log("Setting fallback date:", fallbackDate);
+          setDate(fallbackDate);
         }
       } catch (error) {
         console.error("Error fetching token metadata:", error);
         // Set a fallback date to prevent infinite loops
-        setDate(new Date().toLocaleDateString(undefined, {
+        const fallbackDate = new Date().toLocaleDateString(undefined, {
           year: 'numeric',
           month: 'long',
           day: 'numeric',
-        }));
+        });
+        console.log("Setting fallback date due to error:", fallbackDate);
+        setDate(fallbackDate);
       }
     }
     fetchTimestamp();
@@ -70,18 +83,17 @@ export default function RevealPage() {
   const truncateAddress = (addr: string) =>
     addr ? `0x${addr.slice(2, 5)}...${addr.slice(-5)}` : "";
 
-  // Upload to IPFS and set token URI
   useEffect(() => {
+    console.log("IPFS upload useEffect triggered with:", { date, name, signerNumber, signature, uploaded, uploadAttempted });
     if (date && name && signerNumber && signature && !uploaded && !uploadAttempted) {
       setUploadAttempted(true);
       const displayName = name || truncateAddress(walletAddress);
       console.log("Preparing to upload:", { displayName, date, signerNumber, signature });
       setUploading(true);
-      
       const uploadAndSetTokenURI = async () => {
         try {
           // Replace with your actual email and space DID
-          const email = 'debsoonwy@gmail.com';
+          const email = 'debsoonwy@gmail.com'; // <-- Replace with your actual email
           const spaceDid = 'did:key:z6MktTWQLUtfwCGwCS8HvZxvD5MX2bb11iZqxFx1ewKFEjns';
           console.log('Creating IPFS client...');
           const client = await create();
@@ -90,92 +102,120 @@ export default function RevealPage() {
           console.log('Logged in to IPFS, setting current space...');
           await client.setCurrentSpace(spaceDid);
           console.log('Current space set, waiting for canvas...');
+          
+          // Detect mobile and use longer timeout
+          const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+          const canvasTimeout = isMobile ? 2000 : 500; // 2 seconds on mobile, 0.5 seconds on desktop
+          
           setTimeout(async () => {
             const canvas = document.querySelector('canvas');
-            console.log("Canvas found:", !!canvas, canvas);
+            console.log("Canvas found:", !!canvas, canvas, "isMobile:", isMobile);
             if (!canvas) {
-              setUploading(false);
+              console.log("No canvas found, trying again in 1 second...");
+              setTimeout(async () => {
+                const canvasRetry = document.querySelector('canvas');
+                console.log("Canvas retry found:", !!canvasRetry, canvasRetry);
+                if (!canvasRetry) {
+                  console.log("Still no canvas found, aborting upload");
+                  setUploading(false);
+                  return;
+                }
+                await processCanvas(canvasRetry);
+              }, 1000);
               return;
             }
-            // Convert canvas to blob
-            console.log("Converting canvas to blob...");
-            const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
-            if (!blob) {
-              setUploading(false);
-              alert("Failed to convert canvas to image blob.");
-              return;
-            }
-            // Prepare files for Storacha
-            const artworkFile = new File([blob], 'artwork.png', { type: 'image/png' });
-            
-            // Upload both files together
-            console.log("Uploading artwork and metadata to IPFS...");
-            
-            // Create metadata first
-            interface Metadata {
-              name: string;
-              description: string;
-              image?: string;
-              attributes: Array<{
-                trait_type: string;
-                value: string;
-              }>;
-            }
-            
-            // Upload artwork first
-            const artworkCid = await client.uploadDirectory([artworkFile]);
-            console.log('Uploaded artwork CID:', artworkCid);
-            
-            // Create metadata with the artwork's CID
-            const metadata: Metadata = {
-              name: `Digital Maverick Manifesto #${signerNumber}`,
-              description: `Your unique generative manifesto artwork, signed by ${displayName} on ${date}.`,
-              image: `ipfs://${artworkCid}/artwork.png`,
-              attributes: [
-                { trait_type: "Signer", value: displayName },
-                { trait_type: "Date", value: date },
-                { trait_type: "Token ID", value: signerNumber.toString() },
-                { trait_type: "Transaction Hash", value: signature }
-              ]
-            };
-            
-            // Create and upload metadata file
-            const metadataFile = new File([JSON.stringify(metadata)], 'metadata.json', { type: 'application/json' });
-            const metadataCid = await client.uploadDirectory([metadataFile]);
-            console.log('Uploaded metadata CID:', metadataCid);
-            
-            const ipfsArtworkUrl = `ipfs://${artworkCid}/artwork.png`;
-            const metadataUrl = `ipfs://${metadataCid}/metadata.json`;
-            console.log('Artwork IPFS URL:', ipfsArtworkUrl);
-            console.log('Metadata IPFS URL:', metadataUrl);
-
-            // Update token URI via server-side API
+            await processCanvas(canvas);
+          }, canvasTimeout);
+          
+          const processCanvas = async (canvas: HTMLCanvasElement) => {
             try {
-              const response = await fetch('/api/update-token-uri', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  tokenId: signerNumber,
-                  metadataUrl: metadataUrl
-                }),
-              });
-
-              const result = await response.json();
-              
-              if (response.ok) {
-                console.log('Token URI updated successfully:', result.transactionHash);
-              } else {
-                console.error('Failed to update token URI:', result.error);
+              // Convert canvas to blob
+              console.log("Converting canvas to blob...");
+              const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+              if (!blob) {
+                setUploading(false);
+                console.error("Failed to convert canvas to image blob.");
+                return;
               }
-            } catch (err) {
-              console.error('Error updating token URI:', err);
+              console.log("Canvas blob created, size:", blob.size);
+              
+              // Prepare files for Storacha
+              const artworkFile = new File([blob], 'artwork.png', { type: 'image/png' });
+              
+              // Upload both files together
+              console.log("Uploading artwork and metadata to IPFS...");
+              
+              // Create metadata first
+              interface Metadata {
+                name: string;
+                description: string;
+                image?: string;
+                attributes: Array<{
+                  trait_type: string;
+                  value: string;
+                }>;
+              }
+              
+              // Upload artwork first
+              const artworkCid = await client.uploadDirectory([artworkFile]);
+              console.log('Uploaded artwork CID:', artworkCid);
+              
+              // Create metadata with the artwork's CID
+              const metadata: Metadata = {
+                name: `Digital Maverick Manifesto #${signerNumber}`,
+                description: `Your unique generative manifesto artwork, signed by ${displayName} on ${date}.`,
+                image: `ipfs://${artworkCid}/artwork.png`,
+                attributes: [
+                  { trait_type: "Signer", value: displayName },
+                  { trait_type: "Date", value: date },
+                  { trait_type: "Token ID", value: signerNumber.toString() },
+                  { trait_type: "Transaction Hash", value: signature }
+                ]
+              };
+              
+              // Create and upload metadata file
+              const metadataFile = new File([JSON.stringify(metadata)], 'metadata.json', { type: 'application/json' });
+              const metadataCid = await client.uploadDirectory([metadataFile]);
+              console.log('Uploaded metadata CID:', metadataCid);
+              
+              const ipfsArtworkUrl = `ipfs://${artworkCid}/artwork.png`;
+              const metadataUrl = `ipfs://${metadataCid}/metadata.json`;
+              console.log('Artwork IPFS URL:', ipfsArtworkUrl);
+              console.log('Metadata IPFS URL:', metadataUrl);
+
+              // Update token URI via server-side API
+              try {
+                const response = await fetch('/api/update-token-uri', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    tokenId: signerNumber,
+                    metadataUrl: metadataUrl
+                  }),
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                  console.log('Token URI updated successfully:', result.transactionHash);
+                } else {
+                  console.error('Failed to update token URI:', result.error);
+                  // Don't show alert to user, just log the error
+                }
+              } catch (err) {
+                console.error('Error updating token URI:', err);
+                // Don't show alert to user, just log the error
+              }
+              
+              setUploading(false);
+              setUploaded(true);
+            } catch (error) {
+              console.error('Error processing canvas:', error);
+              setUploading(false);
             }
-            
-            setUploading(false);
-            setUploaded(true);
-          }, 500);
+          };
         } catch (error) {
           console.error('Error in IPFS upload process:', error);
           setUploading(false);
@@ -183,7 +223,7 @@ export default function RevealPage() {
       };
       uploadAndSetTokenURI();
     }
-  }, [date, name, signerNumber, signature, uploaded, uploadAttempted, walletAddress]);
+  }, [date, name, signerNumber, signature, uploaded, uploadAttempted]);
 
   const handleDownloadForPrint = async () => {
     setIsDownloading(true);
@@ -240,6 +280,11 @@ export default function RevealPage() {
         return;
       }
 
+      // Create FormData for the image
+      const formData = new FormData();
+      formData.append('media', blob, 'manifesto-artwork.png');
+
+      // Upload image to Twitter (you'll need to set up Twitter API)
       // For now, we'll use a simple approach with the text
       const shareText = "I just signed the Digital Maverick Manifesto. Written by @debsoon, but owned by everyone. Read and sign the manifesto at manifesto.digitalmavericks.xyz.";
       const shareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
@@ -356,6 +401,8 @@ export default function RevealPage() {
           />
         </div>
       )}
+            {/* Uploading happens silently in the background */}
+      
       
       <ZineByMailModal
         open={zineModalOpen}
