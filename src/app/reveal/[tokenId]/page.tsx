@@ -34,14 +34,12 @@ export default function RevealPage() {
 
   // Fetch onchain date from contract
   useEffect(() => {
+    if (!signerNumber || isNaN(signerNumber)) return;
     async function fetchTimestamp() {
       console.log("signerNumber:", signerNumber);
-      if (!signerNumber) return;
-      
       try {
         const response = await fetch(`/api/get-token-metadata?tokenId=${signerNumber}`);
         const result = await response.json();
-        
         if (response.ok && result.data.timestamp) {
           setDate(new Date(result.data.timestamp * 1000).toLocaleDateString(undefined, {
             year: 'numeric',
@@ -50,7 +48,6 @@ export default function RevealPage() {
           }));
         } else {
           console.log("No timestamp found for tokenId", signerNumber);
-          // Set a fallback date to prevent infinite loops
           setDate(new Date().toLocaleDateString(undefined, {
             year: 'numeric',
             month: 'long',
@@ -59,7 +56,6 @@ export default function RevealPage() {
         }
       } catch (error) {
         console.error("Error fetching token metadata:", error);
-        // Set a fallback date to prevent infinite loops
         setDate(new Date().toLocaleDateString(undefined, {
           year: 'numeric',
           month: 'long',

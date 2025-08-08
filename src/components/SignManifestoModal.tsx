@@ -72,7 +72,22 @@ export default function SignManifestoModal({
           </button>
           {/* Connect external wallet link */}
           <button
-            onClick={onConnectWallet}
+            onClick={async () => {
+
+          const fakeData = {
+            name: "Test User",
+            date: "January 1, 2025",
+            signature: "0x123456789abcdef123456789abcdef123456789abcdef123456789abcdef1234",
+            signerNumber: "42",
+            isMobile: "true"
+          };
+
+          const params = new URLSearchParams(fakeData).toString();
+          const res = await fetch(`/api/generate-artwork?${params}`);
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          // window.open(url, "_blank"); // Opens generated artwork in a new tab
+        }}
             className="text-black underline text-sm font-videocond font-light hover:text-gray-700"
             type="button"
           >
